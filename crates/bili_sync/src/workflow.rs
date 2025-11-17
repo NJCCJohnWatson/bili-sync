@@ -426,9 +426,9 @@ pub async fn download_page(
             Some(base_path.join(format!("{}-fanart.jpg", &base_name))),
             base_path.join(format!("{}.srt", &base_name)),
         )
-    } else {
-            
+    } else {            
             unreachable!("因策略，不执行分集操作");
+            //(
             // base_path
             //     .join("Season 1")
             //     .join(format!("{} - S01E{:0>2}-thumb.jpg", &base_name, page_model.pid)),
@@ -446,7 +446,7 @@ pub async fn download_page(
             // base_path
             //     .join("Season 1")
             //     .join(format!("{} - S01E{:0>2}.srt", &base_name, page_model.pid)),
-        
+            //)        
     };
     let dimension = match (page_model.width, page_model.height) {
         (Some(width), Some(height)) => Some(Dimension {
