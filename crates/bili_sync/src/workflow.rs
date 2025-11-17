@@ -245,7 +245,7 @@ pub async fn download_video_pages(
     let is_single_page = video_model.single_page.context("single_page is null")?;
     // 对于单页视频，page 的下载已经足够
     // 对于多页视频，page 下载仅包含了分集内容，需要额外补上视频的 poster 的 tvshow.nfo
-    // 更改tvshow.nfo为movie.nfo，避免多层Season1嵌套的情况，同时也不用媒体库选择混合内容了
+    // 不使用其tvshow.nfo更改
     let (res_1, res_2, res_3, res_4, res_5) = tokio::join!(
         // 下载视频封面
         fetch_video_poster(
@@ -260,6 +260,7 @@ pub async fn download_video_pages(
             separate_status[1] && !is_single_page && !cx.config.skip_option.no_video_nfo,
             &video_model,
             base_path.join("movie.nfo"),
+            cx
         ),
         // 下载 Up 主头像
         fetch_upper_face(
@@ -425,29 +426,28 @@ pub async fn download_page(
             Some(base_path.join(format!("{}-fanart.jpg", &base_name))),
             base_path.join(format!("{}.srt", &base_name)),
         )
-    } 
-    // else {
-    //     (
-    //         base_path
-    //             .join("Season 1")
-    //             .join(format!("{} - S01E{:0>2}-thumb.jpg", &base_name, page_model.pid)),
-    //         base_path
-    //             .join("Season 1")
-    //             .join(format!("{} - S01E{:0>2}.mp4", &base_name, page_model.pid)),
-    //         base_path
-    //             .join("Season 1")
-    //             .join(format!("{} - S01E{:0>2}.nfo", &base_name, page_model.pid)),
-    //         base_path
-    //             .join("Season 1")
-    //             .join(format!("{} - S01E{:0>2}.zh-CN.default.ass", &base_name, page_model.pid)),
-    //         // 对于多页视频，会在上一步 fetch_video_poster 中获取剧集的 fanart，无需在此处下载单集的
-    //         None,
-    //         base_path
-    //             .join("Season 1")
-    //             .join(format!("{} - S01E{:0>2}.srt", &base_name, page_model.pid)),
-    //     )
-    // }
-    ;
+    } else {
+        (        
+            unreachable!("因策略不执行分集操作")
+            // base_path
+            //     .join("Season 1")
+            //     .join(format!("{} - S01E{:0>2}-thumb.jpg", &base_name, page_model.pid)),
+            // base_path
+            //     .join("Season 1")
+            //     .join(format!("{} - S01E{:0>2}.mp4", &base_name, page_model.pid)),
+            // base_path
+            //     .join("Season 1")
+            //     .join(format!("{} - S01E{:0>2}.nfo", &base_name, page_model.pid)),
+            // base_path
+            //     .join("Season 1")
+            //     .join(format!("{} - S01E{:0>2}.zh-CN.default.ass", &base_name, page_model.pid)),
+            // // 对于多页视频，会在上一步 fetch_video_poster 中获取剧集的 fanart，无需在此处下载单集的
+            // None,
+            // base_path
+            //     .join("Season 1")
+            //     .join(format!("{} - S01E{:0>2}.srt", &base_name, page_model.pid)),
+        )
+    };
     let dimension = match (page_model.width, page_model.height) {
         (Some(width), Some(height)) => Some(Dimension {
             width,
