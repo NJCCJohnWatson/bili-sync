@@ -75,9 +75,17 @@ impl Credential {
 
     pub async fn refresh(&self, client: &Client) -> Result<Self> {
         let correspond_path = Self::get_correspond_path();
-        let csrf = self.get_refresh_csrf(client, correspond_path).await?;
-        let new_credential = self.get_new_credential(client, &csrf).await?;
-        self.confirm_refresh(client, &new_credential).await?;
+        let csrf = self
+            .get_refresh_csrf(client, correspond_path)
+            .await
+            .context("获取 refresh_csrf 失败")?;
+        let new_credential = self
+            .get_new_credential(client, &csrf)
+            .await
+            .context("刷新 Credential 失败")?;
+        self.confirm_refresh(client, &new_credential)
+            .await
+            .context("确认更新 Credential 失败")?;
         Ok(new_credential)
     }
 
@@ -92,7 +100,8 @@ JNrRuoEUXpabUzGB8QIDAQAB
 -----END PUBLIC KEY-----",
         )
         .expect("fail to decode public key");
-        let ts = chrono::Local::now().timestamp_millis();
+        // 精确到毫秒的时间戳可能出现时间比服务器快的情况，提前 20s 以防万一
+        let ts = chrono::Local::now().timestamp_millis() - 20000;
         let data = format!("refresh_{}", ts).into_bytes();
         let encrypted = key
             .encrypt(&mut rand::rng(), Oaep::new::<Sha256>(), &data)
