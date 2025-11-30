@@ -427,7 +427,14 @@ pub async fn download_page(
             base_path.join(format!("{}.srt", &base_name)),
         )
     } else {            
-            unreachable!("因策略，不执行分集操作");
+              (
+        PathBuf::new(),
+        PathBuf::new(),
+        PathBuf::new(),
+        PathBuf::new(),
+        None,
+        PathBuf::new(),
+    )
             //(
             // base_path
             //     .join("Season 1")
