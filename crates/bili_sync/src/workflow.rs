@@ -395,18 +395,23 @@ pub async fn download_page(
                 old_video_filename.trim_end_matches(".mp4").to_string(),
             )
         } else {
-            // 多页下的路径是 {base_path}/Season 1/{base_name} - S01Exx.mp4
+            //将单页多页改为一致
             (
-                old_video_path
-                    .parent()
-                    .and_then(|p| p.parent())
-                    .context("invalid page path format")?,
-                old_video_filename
-                    .rsplit_once(" - ")
-                    .context("invalid page path format")?
-                    .0
-                    .to_string(),
+                old_video_path.parent().context("invalid page path format")?,
+                old_video_filename.trim_end_matches(".mp4").to_string(),
             )
+            // // 多页下的路径是 {base_path}/Season 1/{base_name} - S01Exx.mp4
+            // (
+            //     old_video_path
+            //         .parent()
+            //         .and_then(|p| p.parent())
+            //         .context("invalid page path format")?,
+            //     old_video_filename
+            //         .rsplit_once(" - ")
+            //         .context("invalid page path format")?
+            //         .0
+            //         .to_string(),
+            // )
         }
     } else {
         (
@@ -417,7 +422,8 @@ pub async fn download_page(
             )?,
         )
     };
-    let (poster_path, video_path, nfo_path, danmaku_path, fanart_path, subtitle_path) = if is_single_page {
+    // let (poster_path, video_path, nfo_path, danmaku_path, fanart_path, subtitle_path) = if is_single_page {
+    let (poster_path, video_path, nfo_path, danmaku_path, fanart_path, subtitle_path) = {
         (
             base_path.join(format!("{}-poster.jpg", &base_name)),
             base_path.join(format!("{}.mp4", &base_name)),
@@ -426,15 +432,16 @@ pub async fn download_page(
             Some(base_path.join(format!("{}-fanart.jpg", &base_name))),
             base_path.join(format!("{}.srt", &base_name)),
         )
-    } else {            
-              (
-        PathBuf::new(),
-        PathBuf::new(),
-        PathBuf::new(),
-        PathBuf::new(),
-        None,
-        PathBuf::new(),
-    )
+    } 
+    // else {            
+        // (
+        //     PathBuf::new(),
+        //     PathBuf::new(),
+        //     PathBuf::new(),
+        //     PathBuf::new(),
+        //     None,
+        //     PathBuf::new(),
+        // )
             //(
             // base_path
             //     .join("Season 1")
@@ -454,7 +461,7 @@ pub async fn download_page(
             //     .join("Season 1")
             //     .join(format!("{} - S01E{:0>2}.srt", &base_name, page_model.pid)),
             //)        
-    };
+    ;
     let dimension = match (page_model.width, page_model.height) {
         (Some(width), Some(height)) => Some(Dimension {
             width,
