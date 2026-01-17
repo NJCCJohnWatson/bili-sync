@@ -26,14 +26,17 @@
 		setAll,
 		setCurrentPage,
 		setQuery,
+		setStatusFilter,
 		ToQuery,
 		ToFilterParams,
-		hasActiveFilters
+		hasActiveFilters,
+		type StatusFilterValue
 	} from '$lib/stores/filter';
 	import { toast } from 'svelte-sonner';
 	import DropdownFilter, { type Filter } from '$lib/components/dropdown-filter.svelte';
 	import SearchBar from '$lib/components/search-bar.svelte';
 	import FilteredStatusEditor from '$lib/components/filtered-status-editor.svelte';
+	import StatusFilter from '$lib/components/status-filter.svelte';
 
 	const pageSize = 20;
 
@@ -61,9 +64,18 @@
 				videoSource = { type: source.type, id: value };
 			}
 		}
+		// 支持从 URL 里还原状态筛选
+		const statusFilterParam = searchParams.get('status_filter');
+		const statusFilter: StatusFilterValue | null =
+			statusFilterParam === 'failed' ||
+			statusFilterParam === 'succeeded' ||
+			statusFilterParam === 'waiting'
+				? statusFilterParam
+				: null;
 		return {
 			query: searchParams.get('query') || '',
 			videoSource,
+			statusFilter,
 			pageNum: parseInt(searchParams.get('page') || '0')
 		};
 	}
@@ -71,11 +83,12 @@
 	async function loadVideos(
 		query: string,
 		pageNum: number = 0,
-		filter?: { type: string; id: string } | null
+		filter?: { type: string; id: string } | null,
+		statusFilter: StatusFilterValue | null = null
 	) {
 		loading = true;
 		try {
-			const params: Record<string, string | number> = {
+			const params: Record<string, string | number | boolean> = {
 				page: pageNum,
 				page_size: pageSize
 			};
@@ -84,6 +97,9 @@
 			}
 			if (filter) {
 				params[filter.type] = parseInt(filter.id);
+			}
+			if (statusFilter) {
+				params.status_filter = statusFilter;
 			}
 			const result = await api.getVideos(params);
 			videosData = result.data;
@@ -103,9 +119,9 @@
 	}
 
 	async function handleSearchParamsChange(searchParams: URLSearchParams) {
-		const { query, videoSource, pageNum } = getApiParams(searchParams);
-		setAll(query, pageNum, videoSource);
-		loadVideos(query, pageNum, videoSource);
+		const { query, videoSource, pageNum, statusFilter } = getApiParams(searchParams);
+		setAll(query, pageNum, videoSource, statusFilter);
+		loadVideos(query, pageNum, videoSource, statusFilter);
 	}
 
 	async function handleResetVideo(id: number, forceReset: boolean) {
@@ -116,8 +132,8 @@
 				toast.success('重置成功', {
 					description: `视频「${data.video.name}」已重置`
 				});
-				const { query, currentPage, videoSource } = $appStateStore;
-				await loadVideos(query, currentPage, videoSource);
+				const { query, currentPage, videoSource, statusFilter } = $appStateStore;
+				await loadVideos(query, currentPage, videoSource, statusFilter);
 			} else {
 				toast.info('重置无效', {
 					description: `视频「${data.video.name}」没有失败的状态，无需重置`
@@ -126,6 +142,29 @@
 		} catch (error) {
 			console.error('重置失败：', error);
 			toast.error('重置失败', {
+				description: (error as ApiError).message
+			});
+		}
+	}
+
+	async function handleClearAndResetVideo(id: number) {
+		try {
+			const result = await api.clearAndResetVideoStatus(id);
+			const data = result.data;
+			if (data.warning) {
+				toast.warning('清空重置成功', {
+					description: data.warning
+				});
+			} else {
+				toast.success('清空重置成功', {
+					description: `视频「${data.video.name}」已清空重置`
+				});
+			}
+			const { query, currentPage, videoSource, statusFilter } = $appStateStore;
+			await loadVideos(query, currentPage, videoSource, statusFilter);
+		} catch (error) {
+			console.error('清空重置失败：', error);
+			toast.error('清空重置失败', {
 				description: (error as ApiError).message
 			});
 		}
@@ -145,8 +184,8 @@
 				toast.success('重置成功', {
 					description: `已重置 ${data.resetted_videos_count} 个视频和 ${data.resetted_pages_count} 个分页`
 				});
-				const { query, currentPage, videoSource } = $appStateStore;
-				await loadVideos(query, currentPage, videoSource);
+				const { query, currentPage, videoSource, statusFilter } = $appStateStore;
+				await loadVideos(query, currentPage, videoSource, statusFilter);
 			} else {
 				toast.info('没有需要重置的视频');
 			}
@@ -176,8 +215,8 @@
 				toast.success('更新成功', {
 					description: `已更新 ${data.updated_videos_count} 个视频和 ${data.updated_pages_count} 个分页`
 				});
-				const { query, currentPage, videoSource } = $appStateStore;
-				await loadVideos(query, currentPage, videoSource);
+				const { query, currentPage, videoSource, statusFilter } = $appStateStore;
+				await loadVideos(query, currentPage, videoSource, statusFilter);
 			} else {
 				toast.info('没有视频被更新');
 			}
@@ -210,6 +249,14 @@
 					parts.push(`${sourceConfig.title}：${source.name}`);
 				}
 			}
+		}
+		if (state.statusFilter) {
+			const statusLabels = {
+				failed: '仅失败',
+				succeeded: '仅成功',
+				waiting: '仅等待'
+			};
+			parts.push(`状态：${statusLabels[state.statusFilter]}`);
 		}
 		return parts;
 	}
@@ -266,20 +313,40 @@
 			goto(`/${ToQuery($appStateStore)}`);
 		}}
 	></SearchBar>
-	<div class="flex items-center gap-2">
-		<span class="text-muted-foreground text-sm">筛选：</span>
-		<DropdownFilter
-			{filters}
-			selectedLabel={$appStateStore.videoSource}
-			onSelect={(type, id) => {
-				setAll('', 0, { type, id });
-				goto(`/${ToQuery($appStateStore)}`);
-			}}
-			onRemove={() => {
-				setAll('', 0, null);
-				goto(`/${ToQuery($appStateStore)}`);
-			}}
-		/>
+	<div class="flex items-center gap-3">
+		<!-- 状态筛选 -->
+		<div class="flex items-center gap-1">
+			<span class="text-muted-foreground text-xs">状态:</span>
+			<StatusFilter
+				value={$appStateStore.statusFilter}
+				onSelect={(value) => {
+					setStatusFilter(value);
+					resetCurrentPage();
+					goto(`/${ToQuery($appStateStore)}`);
+				}}
+				onRemove={() => {
+					setStatusFilter(null);
+					resetCurrentPage();
+					goto(`/${ToQuery($appStateStore)}`);
+				}}
+			/>
+		</div>
+		<!-- 视频源筛选 -->
+		<div class="flex items-center gap-1">
+			<span class="text-muted-foreground text-xs">来源:</span>
+			<DropdownFilter
+				{filters}
+				selectedLabel={$appStateStore.videoSource}
+				onSelect={(type, id) => {
+					setAll('', 0, { type, id }, $appStateStore.statusFilter);
+					goto(`/${ToQuery($appStateStore)}`);
+				}}
+				onRemove={() => {
+					setAll('', 0, null, $appStateStore.statusFilter);
+					goto(`/${ToQuery($appStateStore)}`);
+				}}
+			/>
+		</div>
 	</div>
 </div>
 
@@ -331,6 +398,9 @@
 				{video}
 				onReset={async (forceReset: boolean) => {
 					await handleResetVideo(video.id, forceReset);
+				}}
+				onClearAndReset={async () => {
+					await handleClearAndResetVideo(video.id);
 				}}
 			/>
 		{/each}

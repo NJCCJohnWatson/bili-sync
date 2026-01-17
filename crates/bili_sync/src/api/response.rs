@@ -3,6 +3,8 @@ use bili_sync_entity::*;
 use sea_orm::{DerivePartialModel, FromQueryResult};
 use serde::Serialize;
 pub use chrono::NaiveDateTime as DateTime;
+
+use crate::bilibili::{PollStatus, Qrcode};
 use crate::utils::status::{PageStatus, VideoStatus};
 
 #[derive(Serialize)]
@@ -36,6 +38,12 @@ pub struct ResetVideoResponse {
     pub resetted: bool,
     pub video: VideoInfo,
     pub pages: Vec<PageInfo>,
+}
+
+#[derive(Serialize)]
+pub struct ClearAndResetVideoStatusResponse {
+    pub warning: Option<String>,
+    pub video: VideoInfo,
 }
 
 #[derive(Serialize)]
@@ -190,6 +198,7 @@ pub struct DashBoardResponse {
 
 #[derive(Serialize, Clone, Copy)]
 pub struct SysInfo {
+    pub timestamp: i64,
     pub total_memory: u64,
     pub used_memory: u64,
     pub process_memory: u64,
@@ -217,6 +226,11 @@ pub struct VideoSourceDetail {
 pub struct UpdateVideoSourceResponse {
     pub rule_display: Option<String>,
 }
+
+pub type GenerateQrcodeResponse = Qrcode;
+
+pub type PollQrcodeResponse = PollStatus;
+
 // 新增：完整视频信息结构体
 #[derive(Serialize, DerivePartialModel, FromQueryResult)]
 #[sea_orm(entity = "video::Entity")]

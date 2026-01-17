@@ -9,6 +9,7 @@ export interface VideosRequest {
 	submission?: number;
 	watch_later?: number;
 	query?: string;
+	failed_only?: boolean;
 	page?: number;
 	page_size?: number;
 }
@@ -57,6 +58,11 @@ export interface ResetVideoResponse {
 	pages: PageInfo[];
 }
 
+export interface ClearAndResetVideoResponse {
+	warning?: string;
+	video: VideoInfo;
+}
+
 export interface ResetFilteredVideosResponse {
 	resetted: boolean;
 	resetted_videos_count: number;
@@ -101,6 +107,8 @@ export interface UpdateFilteredVideoStatusRequest {
 	submission?: number;
 	watch_later?: number;
 	query?: string;
+	// 仅更新下载失败
+	failed_only?: boolean;
 	video_updates?: StatusUpdate[];
 	page_updates?: StatusUpdate[];
 }
@@ -115,6 +123,8 @@ export interface ResetFilteredVideoStatusRequest {
 	submission?: number;
 	watch_later?: number;
 	query?: string;
+	// 仅重置下载失败
+	failed_only?: boolean;
 	force: boolean;
 }
 
@@ -328,6 +338,7 @@ export interface DashBoardResponse {
 }
 
 export interface SysInfo {
+	timestamp: number;
 	total_memory: number;
 	used_memory: number;
 	process_memory: number;
@@ -336,7 +347,6 @@ export interface SysInfo {
 	total_disk: number;
 	used_disk: number;
 	available_disk: number;
-	uptime: number;
 }
 
 export interface TaskStatus {
@@ -349,3 +359,24 @@ export interface TaskStatus {
 export interface UpdateVideoSourceResponse {
 	ruleDisplay: string;
 }
+
+// 扫码登录相关类型
+export interface QrcodeGenerateResponse {
+	url: string;
+	qrcode_key: string;
+}
+
+export type QrcodePollResponse =
+	| {
+			status: 'success';
+			credential: Credential;
+	  }
+	| {
+			status: 'pending';
+			message: string;
+			scanned?: boolean;
+	  }
+	| {
+			status: 'expired';
+			message: string;
+	  };

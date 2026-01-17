@@ -5,6 +5,7 @@ import type {
 	VideosResponse,
 	VideoResponse,
 	ResetVideoResponse,
+	ClearAndResetVideoResponse,
 	ResetFilteredVideosResponse,
 	UpdateVideoStatusRequest,
 	UpdateVideoStatusResponse,
@@ -26,7 +27,9 @@ import type {
 	Notifier,
 	UpdateFilteredVideoStatusRequest,
 	UpdateFilteredVideoStatusResponse,
-	ResetFilteredVideoStatusRequest
+	ResetFilteredVideoStatusRequest,
+	QrcodeGenerateResponse as GenerateQrcodeResponse,
+	QrcodePollResponse as PollQrcodeResponse
 } from './types';
 import { wsManager } from './ws';
 
@@ -163,6 +166,10 @@ class ApiClient {
 		return this.post<ResetVideoResponse>(`/videos/${id}/reset-status`, request);
 	}
 
+	async clearAndResetVideoStatus(id: number): Promise<ApiResponse<ClearAndResetVideoResponse>> {
+		return this.post<ClearAndResetVideoResponse>(`/videos/${id}/clear-and-reset-status`);
+	}
+
 	async resetFilteredVideoStatus(
 		request: ResetFilteredVideoStatusRequest
 	): Promise<ApiResponse<ResetFilteredVideosResponse>> {
@@ -199,11 +206,13 @@ class ApiClient {
 
 	async getFollowedUppers(
 		pageNum?: number,
-		pageSize?: number
+		pageSize?: number,
+		name?: string
 	): Promise<ApiResponse<UppersResponse>> {
 		const params = {
 			page_num: pageNum,
-			page_size: pageSize
+			page_size: pageSize,
+			name: name
 		};
 		return this.get<UppersResponse>('/me/uppers', params as Record<string, unknown>);
 	}
@@ -264,6 +273,14 @@ class ApiClient {
 		return this.post<boolean>('/task/download');
 	}
 
+	async generateQrcode(): Promise<ApiResponse<GenerateQrcodeResponse>> {
+		return this.post<GenerateQrcodeResponse>('/login/qrcode/generate');
+	}
+
+	async pollQrcode(qrcodeKey: string): Promise<ApiResponse<PollQrcodeResponse>> {
+		return this.get<PollQrcodeResponse>('/login/qrcode/poll', { qrcode_key: qrcodeKey });
+	}
+
 	subscribeToLogs(onMessage: (data: string) => void) {
 		return wsManager.subscribeToLogs(onMessage);
 	}
@@ -285,6 +302,7 @@ const api = {
 	getVideo: (id: number) => apiClient.getVideo(id),
 	resetVideoStatus: (id: number, request: ResetVideoStatusRequest) =>
 		apiClient.resetVideoStatus(id, request),
+	clearAndResetVideoStatus: (id: number) => apiClient.clearAndResetVideoStatus(id),
 	resetFilteredVideoStatus: (request: ResetFilteredVideoStatusRequest) =>
 		apiClient.resetFilteredVideoStatus(request),
 	updateVideoStatus: (id: number, request: UpdateVideoStatusRequest) =>
@@ -294,8 +312,8 @@ const api = {
 	getCreatedFavorites: () => apiClient.getCreatedFavorites(),
 	getFollowedCollections: (pageNum?: number, pageSize?: number) =>
 		apiClient.getFollowedCollections(pageNum, pageSize),
-	getFollowedUppers: (pageNum?: number, pageSize?: number) =>
-		apiClient.getFollowedUppers(pageNum, pageSize),
+	getFollowedUppers: (pageNum?: number, pageSize?: number, name?: string) =>
+		apiClient.getFollowedUppers(pageNum, pageSize, name),
 	insertFavorite: (request: InsertFavoriteRequest) => apiClient.insertFavorite(request),
 	insertCollection: (request: InsertCollectionRequest) => apiClient.insertCollection(request),
 	insertSubmission: (request: InsertSubmissionRequest) => apiClient.insertSubmission(request),
@@ -311,6 +329,8 @@ const api = {
 	updateConfig: (config: Config) => apiClient.updateConfig(config),
 	getDashboard: () => apiClient.getDashboard(),
 	triggerDownloadTask: () => apiClient.triggerDownloadTask(),
+	generateQrcode: () => apiClient.generateQrcode(),
+	pollQrcode: (qrcodeKey: string) => apiClient.pollQrcode(qrcodeKey),
 	subscribeToSysInfo: (onMessage: (data: SysInfo) => void) =>
 		apiClient.subscribeToSysInfo(onMessage),
 

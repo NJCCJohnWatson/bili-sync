@@ -5,12 +5,21 @@ use validator::Validate;
 use crate::bilibili::CollectionType;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum StatusFilter {
+    Failed,
+    Succeeded,
+    Waiting,
+}
+
+#[derive(Deserialize)]
 pub struct VideosRequest {
     pub collection: Option<i32>,
     pub favorite: Option<i32>,
     pub submission: Option<i32>,
     pub watch_later: Option<i32>,
     pub query: Option<String>,
+    pub status_filter: Option<StatusFilter>,
     pub page: Option<u64>,
     pub page_size: Option<u64>,
 }
@@ -28,6 +37,7 @@ pub struct ResetFilteredVideoStatusRequest {
     pub submission: Option<i32>,
     pub watch_later: Option<i32>,
     pub query: Option<String>,
+    pub status_filter: Option<StatusFilter>,
     #[serde(default)]
     pub force: bool,
 }
@@ -64,6 +74,7 @@ pub struct UpdateFilteredVideoStatusRequest {
     pub submission: Option<i32>,
     pub watch_later: Option<i32>,
     pub query: Option<String>,
+    pub status_filter: Option<StatusFilter>,
     #[serde(default)]
     #[validate(nested)]
     pub video_updates: Vec<StatusUpdate>,
@@ -82,6 +93,7 @@ pub struct FollowedCollectionsRequest {
 pub struct FollowedUppersRequest {
     pub page_num: Option<i32>,
     pub page_size: Option<i32>,
+    pub name: Option<String>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -121,4 +133,9 @@ pub struct UpdateVideoSourceRequest {
 #[derive(Serialize, Deserialize)]
 pub struct DefaultPathRequest {
     pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PollQrcodeRequest {
+    pub qrcode_key: String,
 }
