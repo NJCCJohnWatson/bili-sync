@@ -13,8 +13,8 @@ use tokio::process::Command;
 use tokio::task::JoinSet;
 use tokio_util::io::StreamReader;
 
-use crate::bilibili::Client;
-use crate::config::ConcurrentDownloadLimit;
+use crate::bilibili::{Client, ErrorForStatusExt};
+use crate::config::{ARGS, ConcurrentDownloadLimit};
 
 pub struct Downloader {
     client: Client,
@@ -70,7 +70,7 @@ impl Downloader {
             self.multi_fetch_internal(audio_urls, true, concurrent_download)
         )?;
         let final_temp_file = TempFile::new().await?;
-        let output = Command::new("ffmpeg")
+        let output = Command::new(ARGS.ffmpeg_path.as_deref().unwrap_or("ffmpeg"))
             .args([
                 "-i",
                 video_temp_file.file_path().to_string_lossy().as_ref(),
@@ -152,7 +152,7 @@ impl Downloader {
             .request(Method::GET, url, None)
             .send()
             .await?
-            .error_for_status()?;
+            .error_for_status_ext()?;
         let expected = resp.header_content_length();
         let mut stream_reader = StreamReader::new(resp.bytes_stream().map_err(std::io::Error::other));
         let received = tokio::io::copy(&mut stream_reader, file).await?;
@@ -184,7 +184,7 @@ impl Downloader {
                 .header(header::RANGE, "bytes=0-0")
                 .send()
                 .await?
-                .error_for_status()?;
+                .error_for_status_ext()?;
             if resp.status() != StatusCode::PARTIAL_CONTENT {
                 return self.fetch_serial(url, file).await;
             }
@@ -196,7 +196,7 @@ impl Downloader {
                 .request(Method::HEAD, url, None)
                 .send()
                 .await?
-                .error_for_status()?;
+                .error_for_status_ext()?;
             if resp
                 .headers()
                 .get(header::ACCEPT_RANGES)
@@ -234,7 +234,7 @@ impl Downloader {
                     .header(header::RANGE, &range_header)
                     .send()
                     .await?
-                    .error_for_status()?;
+                    .error_for_status_ext()?;
                 if let Some(content_length) = resp.header_content_length() {
                     ensure!(
                         content_length == end - start + 1,
