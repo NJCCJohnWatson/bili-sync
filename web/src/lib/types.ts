@@ -31,6 +31,7 @@ export interface VideoInfo {
 	bvid: string;
 	name: string;
 	upper_name: string;
+	valid: boolean;
 	should_download: boolean;
 	download_status: [number, number, number, number, number];
 }
@@ -321,6 +322,7 @@ export interface Config {
 	concurrent_limit: ConcurrentLimit;
 	time_format: string;
 	cdn_sorting: boolean;
+	try_upower_anyway: boolean;
 	version: number;
 }
 

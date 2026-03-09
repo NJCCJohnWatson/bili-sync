@@ -150,7 +150,7 @@ pub async fn fetch_video_details(
                         .map(|p| p.into_active_model(video_model.id))
                         .collect::<Vec<page::ActiveModel>>();
                     // 更新 video model 的各项有关属性
-                    let mut video_active_model = view_info.into_detail_model(video_model);
+                    let mut video_active_model = view_info.into_detail_model(video_model, config.try_upower_anyway);
                     video_source.set_relation_id(&mut video_active_model);
                     video_active_model.single_page = Set(Some(pages.len() == 1));
                     video_active_model.tags = Set(Some(tags.into()));
@@ -236,6 +236,8 @@ pub async fn download_video_pages(
                 .path_safe_render("video", &video_format_args(&video_model, &cx.config.time_format))?,
         )
     };
+    fs::create_dir_all(&base_path).await?;
+    let base_path = dunce::canonicalize(base_path).context("canonicalize video path failed")?;
     let upper_id = video_model.upper_id.to_string();
     let base_upper_path = cx
         .config
@@ -422,8 +424,8 @@ pub async fn download_page(
             )?,
         )
     };
-    // let (poster_path, video_path, nfo_path, danmaku_path, fanart_path, subtitle_path) = if is_single_page {
-    let (poster_path, video_path, nfo_path, danmaku_path, fanart_path, subtitle_path) = {
+    let base_path = dunce::canonicalize(base_path).context("canonicalize base path failed")?;
+    let (poster_path, video_path, nfo_path, danmaku_path, fanart_path, subtitle_path) = if is_single_page {
         (
             base_path.join(format!("{}-poster.jpg", &base_name)),
             base_path.join(format!("{}.mp4", &base_name)),

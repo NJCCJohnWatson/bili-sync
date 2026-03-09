@@ -3,6 +3,7 @@ use std::sync::{Arc, LazyLock};
 
 use anyhow::{Result, bail};
 use croner::parser::CronParser;
+use itertools::Itertools;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
@@ -49,6 +50,8 @@ pub struct Config {
     pub concurrent_limit: ConcurrentLimit,
     pub time_format: String,
     pub cdn_sorting: bool,
+    #[serde(default)]
+    pub try_upower_anyway: bool,
     pub version: u64,
 }
 
@@ -103,13 +106,7 @@ impl Config {
             }
         };
         if !errors.is_empty() {
-            bail!(
-                errors
-                    .into_iter()
-                    .map(|e| format!("- {}", e))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            );
+            bail!(errors.into_iter().map(|e| format!("- {}", e)).join("\n"));
         }
         Ok(())
     }
@@ -136,6 +133,7 @@ impl Default for Config {
             concurrent_limit: ConcurrentLimit::default(),
             time_format: default_time_format(),
             cdn_sorting: false,
+            try_upower_anyway: false,
             version: 0,
         }
     }
