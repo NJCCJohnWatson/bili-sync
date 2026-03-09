@@ -435,35 +435,17 @@ pub async fn download_page(
             base_path.join(format!("{}.srt", &base_name)),
         )
     } 
-    // else {            
-        // (
-        //     PathBuf::new(),
-        //     PathBuf::new(),
-        //     PathBuf::new(),
-        //     PathBuf::new(),
-        //     None,
-        //     PathBuf::new(),
-        // )
-            //(
-            // base_path
-            //     .join("Season 1")
-            //     .join(format!("{} - S01E{:0>2}-thumb.jpg", &base_name, page_model.pid)),
-            // base_path
-            //     .join("Season 1")
-            //     .join(format!("{} - S01E{:0>2}.mp4", &base_name, page_model.pid)),
-            // base_path
-            //     .join("Season 1")
-            //     .join(format!("{} - S01E{:0>2}.nfo", &base_name, page_model.pid)),
-            // base_path
-            //     .join("Season 1")
-            //     .join(format!("{} - S01E{:0>2}.zh-CN.default.ass", &base_name, page_model.pid)),
-            // // 对于多页视频，会在上一步 fetch_video_poster 中获取剧集的 fanart，无需在此处下载单集的
-            // None,
-            // base_path
-            //     .join("Season 1")
-            //     .join(format!("{} - S01E{:0>2}.srt", &base_name, page_model.pid)),
-            //)        
-    ;
+    else {            
+(
+            base_path.join(format!("{}-poster.jpg", &base_name)),
+            base_path.join(format!("{}.mp4", &base_name)),
+            base_path.join(format!("{}.nfo", &base_name)),
+            base_path.join(format!("{}.zh-CN.default.ass", &base_name)),
+            None, // 多页视频通常不独立生成单集 fanart
+            base_path.join(format!("{}.srt", &base_name)),
+        )      
+        }
+;
     let dimension = match (page_model.width, page_model.height) {
         (Some(width), Some(height)) => Some(Dimension {
             width,
