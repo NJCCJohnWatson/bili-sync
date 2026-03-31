@@ -242,12 +242,6 @@ pub struct FullSyncVideoSourceResponse {
     pub warnings: Option<Vec<String>>,
 }
 
-#[derive(Serialize)]
-pub struct FullSyncVideoSourceResponse {
-    pub removed_count: usize,
-    pub warnings: Option<Vec<String>>,
-}
-
 // 新增：完整视频信息结构体
 #[derive(Serialize, DerivePartialModel, FromQueryResult)]
 #[sea_orm(entity = "video::Entity")]
