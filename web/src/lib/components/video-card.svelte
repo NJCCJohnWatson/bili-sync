@@ -13,13 +13,17 @@
 		BrushCleaningIcon,
 		UserIcon,
 		SquareArrowOutUpRightIcon,
-		EllipsisIcon
+		EllipsisIcon,
+		HeartIcon,
+		FolderIcon,
+		ClockIcon
 	} from '@lucide/svelte/icons';
 	import { goto } from '$app/navigation';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
 	// 将 bvid 设置为可选属性，但保留 VideoInfo 的其它所有属性
 	export let video: Omit<VideoInfo, 'bvid'> & { bvid?: string };
+	export let source: { type: string; name: string } | null = null; // 视频源信息
 	export let showActions: boolean = true; // 控制是否显示操作按钮
 	export let mode: 'default' | 'detail' | 'page' = 'default'; // 卡片模式
 	export let customTitle: string = ''; // 自定义标题
@@ -65,7 +69,7 @@
 	} {
 		if (!valid) {
 			// 视频属性表明已失效，或由于各种条件判断（充电视频等）判定为无效的情况
-			return { text: '无效', style: 'bg-gray-100 text-gray-700' };
+			return { text: '失效', style: 'bg-gray-100 text-gray-700' };
 		}
 		if (!shouldDownload) {
 			// 被过滤规则排除，显示为“跳过”
@@ -132,7 +136,7 @@
 </script>
 
 <Card class={cardClasses}>
-	<CardHeader class="shrink-0 pb-3">
+	<CardHeader class="shrink-0 pb-1">
 		<div class="flex min-w-0 items-start justify-between gap-3">
 			<CardTitle
 				class="line-clamp-2 min-w-0 flex-1 cursor-default {mode === 'default'
@@ -155,6 +159,24 @@
 				<span class="min-w-0 cursor-default truncate" title={displaySubtitle}>
 					{displaySubtitle}
 				</span>
+			</div>
+		{/if}
+		{#if source}
+			<div class="text-muted-foreground mt-2 flex min-w-0 items-center justify-end gap-1 text-sm">
+				<Badge variant="outline" class="max-w-full shrink px-1.5 py-0.5">
+					{#if source.type === 'favorite'}
+						<HeartIcon class="h-3.5 w-3.5 shrink-0" />
+					{:else if source.type === 'collection'}
+						<FolderIcon class="h-3.5 w-3.5 shrink-0" />
+					{:else if source.type === 'submission'}
+						<UserIcon class="h-3.5 w-3.5 shrink-0" />
+					{:else if source.type === 'watch_later'}
+						<ClockIcon class="h-3.5 w-3.5 shrink-0" />
+					{/if}
+					<span class="min-w-0 truncate" title={source.name}>
+						{source.name}
+					</span>
+				</Badge>
 			</div>
 		{/if}
 	</CardHeader>

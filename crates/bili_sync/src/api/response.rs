@@ -84,6 +84,10 @@ pub struct VideoInfo {
     pub should_download: bool,
     #[serde(serialize_with = "serde_video_download_status")]
     pub download_status: u32,
+    pub collection_id: Option<i32>,
+    pub favorite_id: Option<i32>,
+    pub submission_id: Option<i32>,
+    pub watch_later_id: Option<i32>,
 }
 
 #[derive(Serialize, DerivePartialModel, FromQueryResult)]
@@ -231,6 +235,18 @@ pub struct UpdateVideoSourceResponse {
 pub type GenerateQrcodeResponse = Qrcode;
 
 pub type PollQrcodeResponse = PollStatus;
+
+#[derive(Serialize)]
+pub struct FullSyncVideoSourceResponse {
+    pub removed_count: usize,
+    pub warnings: Option<Vec<String>>,
+}
+
+#[derive(Serialize)]
+pub struct FullSyncVideoSourceResponse {
+    pub removed_count: usize,
+    pub warnings: Option<Vec<String>>,
+}
 
 // 新增：完整视频信息结构体
 #[derive(Serialize, DerivePartialModel, FromQueryResult)]

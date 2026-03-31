@@ -9,7 +9,8 @@ export interface VideosRequest {
 	submission?: number;
 	watch_later?: number;
 	query?: string;
-	failed_only?: boolean;
+	status_filter?: 'failed' | 'succeeded' | 'waiting';
+	validation_filter?: 'skipped' | 'invalid' | 'normal';
 	page?: number;
 	page_size?: number;
 }
@@ -34,6 +35,10 @@ export interface VideoInfo {
 	valid: boolean;
 	should_download: boolean;
 	download_status: [number, number, number, number, number];
+	collection_id?: number;
+	favorite_id?: number;
+	submission_id?: number;
+	watch_later_id?: number;
 }
 
 export interface VideosResponse {
@@ -84,7 +89,16 @@ export interface UpdateFilteredVideoStatusResponse {
 
 export interface ApiError {
 	message: string;
-	status?: number;
+	status: number;
+}
+
+export interface FullSyncVideoSourceRequest {
+	delete_local: boolean;
+}
+
+export interface FullSyncVideoSourceResponse {
+	removed_count: number;
+	warnings?: string[];
 }
 
 export interface StatusUpdate {
@@ -108,8 +122,8 @@ export interface UpdateFilteredVideoStatusRequest {
 	submission?: number;
 	watch_later?: number;
 	query?: string;
-	// 仅更新下载失败
-	failed_only?: boolean;
+	status_filter?: 'failed' | 'succeeded' | 'waiting';
+	validation_filter?: 'skipped' | 'invalid' | 'normal';
 	video_updates?: StatusUpdate[];
 	page_updates?: StatusUpdate[];
 }
@@ -124,8 +138,8 @@ export interface ResetFilteredVideoStatusRequest {
 	submission?: number;
 	watch_later?: number;
 	query?: string;
-	// 仅重置下载失败
-	failed_only?: boolean;
+	status_filter?: 'failed' | 'succeeded' | 'waiting';
+	validation_filter?: 'skipped' | 'invalid' | 'normal';
 	force: boolean;
 }
 
@@ -199,7 +213,7 @@ export interface RuleTarget<T> {
 	rule: Condition<T> | RuleTarget<T>;
 }
 
-export type AndGroup = RuleTarget<string | number | Date>[];
+export type AndGroup = RuleTarget<string | number | boolean | Date>[];
 export type Rule = AndGroup[];
 
 export interface VideoSourceDetail {
@@ -297,6 +311,7 @@ export interface WebhookNotifier {
 	type: 'webhook';
 	url: string;
 	template?: string | null;
+	headers?: Record<string, string> | null;
 }
 
 export type Notifier = TelegramNotifier | WebhookNotifier;

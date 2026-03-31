@@ -71,6 +71,9 @@ pub async fn get_videos(
     if let Some(status_filter) = params.status_filter {
         query = query.filter(status_filter.to_video_query());
     }
+    if let Some(validation_filter) = params.validation_filter {
+        query = query.filter(validation_filter.to_video_query());
+    }
     let total_count = query.clone().count(&db).await?;
     let (page, page_size) = if let (Some(page), Some(page_size)) = (params.page, params.page_size) {
         (page, page_size)
@@ -215,11 +218,15 @@ pub async fn clear_and_reset_video_status(
         .await?;
     txn.commit().await?;
     let video_info = video_info.try_into_model()?;
-    let warning = tokio::fs::remove_dir_all(&video_info.path)
-        .await
-        .context(format!("删除本地路径「{}」失败", video_info.path))
-        .err()
-        .map(|e| format!("{:#}", e));
+    let warning = if video_info.path.is_empty() {
+        None
+    } else {
+        tokio::fs::remove_dir_all(&video_info.path)
+            .await
+            .context(format!("删除本地路径「{}」失败", video_info.path))
+            .err()
+            .map(|e| format!("{:#}", e))
+    };
     Ok(ApiResponse::ok(ClearAndResetVideoStatusResponse {
         warning,
         video: VideoInfo {
@@ -230,6 +237,10 @@ pub async fn clear_and_reset_video_status(
             valid: video_info.valid,
             should_download: video_info.should_download,
             download_status: video_info.download_status,
+            collection_id: video_info.collection_id,
+            favorite_id: video_info.favorite_id,
+            submission_id: video_info.submission_id,
+            watch_later_id: video_info.watch_later_id,
         },
     }))
 }
@@ -258,6 +269,9 @@ pub async fn reset_filtered_video_status(
     }
     if let Some(status_filter) = request.status_filter {
         query = query.filter(status_filter.to_video_query());
+    }
+    if let Some(validation_filter) = request.validation_filter {
+        query = query.filter(validation_filter.to_video_query());
     }
     let all_videos = query.into_partial_model::<SimpleVideoInfo>().all(&db).await?;
     let all_pages = page::Entity::find()
@@ -394,6 +408,9 @@ pub async fn update_filtered_video_status(
     }
     if let Some(status_filter) = request.status_filter {
         query = query.filter(status_filter.to_video_query());
+    }
+    if let Some(validation_filter) = request.validation_filter {
+        query = query.filter(validation_filter.to_video_query());
     }
     let mut all_videos = query.into_partial_model::<SimpleVideoInfo>().all(&db).await?;
     let mut all_pages = page::Entity::find()

@@ -12,7 +12,8 @@
 		VideoSourcesResponse,
 		ApiError,
 		VideoSource,
-		UpdateFilteredVideoStatusRequest
+		UpdateFilteredVideoStatusRequest,
+		VideoInfo
 	} from '$lib/types';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
@@ -26,16 +27,20 @@
 		setCurrentPage,
 		setQuery,
 		setStatusFilter,
+		setValidationFilter,
 		ToQuery,
 		ToFilterParams,
 		hasActiveFilters,
-		type StatusFilterValue
+		type StatusFilterValue,
+		type ValidationFilterValue
 	} from '$lib/stores/filter';
 	import { toast } from 'svelte-sonner';
 	import DropdownFilter, { type Filter } from '$lib/components/dropdown-filter.svelte';
 	import SearchBar from '$lib/components/search-bar.svelte';
 	import FilteredStatusEditor from '$lib/components/filtered-status-editor.svelte';
 	import StatusFilter from '$lib/components/status-filter.svelte';
+	import ValidationFilter from '$lib/components/validation-filter.svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	const pageSize = 20;
 
@@ -53,7 +58,9 @@
 	let updatingAll = false;
 
 	let videoSources: VideoSourcesResponse | null = null;
+	let videoSourcesLoaded = false;
 	let filters: Record<string, Filter> | null = null;
+	let sourceMap: SvelteMap<string, { type: string; name: string }> = new SvelteMap();
 
 	function getApiParams(searchParams: URLSearchParams) {
 		let videoSource = null;
@@ -71,10 +78,18 @@
 			statusFilterParam === 'waiting'
 				? statusFilterParam
 				: null;
+		const validationFilterParam = searchParams.get('validation_filter');
+		const validationFilter: ValidationFilterValue =
+			validationFilterParam === 'skipped' ||
+			validationFilterParam === 'invalid' ||
+			validationFilterParam === 'normal'
+				? validationFilterParam
+				: null;
 		return {
 			query: searchParams.get('query') || '',
 			videoSource,
 			statusFilter,
+			validationFilter,
 			pageNum: parseInt(searchParams.get('page') || '0')
 		};
 	}
@@ -83,7 +98,8 @@
 		query: string,
 		pageNum: number = 0,
 		filter?: { type: string; id: string } | null,
-		statusFilter: StatusFilterValue | null = null
+		statusFilter: StatusFilterValue | null = null,
+		validationFilter: ValidationFilterValue | null = null
 	) {
 		loading = true;
 		try {
@@ -99,6 +115,9 @@
 			}
 			if (statusFilter) {
 				params.status_filter = statusFilter;
+			}
+			if (validationFilter) {
+				params.validation_filter = validationFilter;
 			}
 			const result = await api.getVideos(params);
 			videosData = result.data;
@@ -118,9 +137,10 @@
 	}
 
 	async function handleSearchParamsChange(searchParams: URLSearchParams) {
-		const { query, videoSource, pageNum, statusFilter } = getApiParams(searchParams);
-		setAll(query, pageNum, videoSource, statusFilter);
-		loadVideos(query, pageNum, videoSource, statusFilter);
+		const { query, videoSource, pageNum, statusFilter, validationFilter } =
+			getApiParams(searchParams);
+		setAll(query, pageNum, videoSource, statusFilter, validationFilter);
+		loadVideos(query, pageNum, videoSource, statusFilter, validationFilter);
 	}
 
 	async function handleResetVideo(id: number, forceReset: boolean) {
@@ -131,8 +151,8 @@
 				toast.success('重置成功', {
 					description: `视频「${data.video.name}」已重置`
 				});
-				const { query, currentPage, videoSource, statusFilter } = $appStateStore;
-				await loadVideos(query, currentPage, videoSource, statusFilter);
+				const { query, currentPage, videoSource, statusFilter, validationFilter } = $appStateStore;
+				await loadVideos(query, currentPage, videoSource, statusFilter, validationFilter);
 			} else {
 				toast.info('重置无效', {
 					description: `视频「${data.video.name}」没有失败的状态，无需重置`
@@ -159,8 +179,8 @@
 					description: `视频「${data.video.name}」已清空重置`
 				});
 			}
-			const { query, currentPage, videoSource, statusFilter } = $appStateStore;
-			await loadVideos(query, currentPage, videoSource, statusFilter);
+			const { query, currentPage, videoSource, statusFilter, validationFilter } = $appStateStore;
+			await loadVideos(query, currentPage, videoSource, statusFilter, validationFilter);
 		} catch (error) {
 			console.error('清空重置失败：', error);
 			toast.error('清空重置失败', {
@@ -183,8 +203,8 @@
 				toast.success('重置成功', {
 					description: `已重置 ${data.resetted_videos_count} 个视频和 ${data.resetted_pages_count} 个分页`
 				});
-				const { query, currentPage, videoSource, statusFilter } = $appStateStore;
-				await loadVideos(query, currentPage, videoSource, statusFilter);
+				const { query, currentPage, videoSource, statusFilter, validationFilter } = $appStateStore;
+				await loadVideos(query, currentPage, videoSource, statusFilter, validationFilter);
 			} else {
 				toast.info('没有需要重置的视频');
 			}
@@ -214,8 +234,8 @@
 				toast.success('更新成功', {
 					description: `已更新 ${data.updated_videos_count} 个视频和 ${data.updated_pages_count} 个分页`
 				});
-				const { query, currentPage, videoSource, statusFilter } = $appStateStore;
-				await loadVideos(query, currentPage, videoSource, statusFilter);
+				const { query, currentPage, videoSource, statusFilter, validationFilter } = $appStateStore;
+				await loadVideos(query, currentPage, videoSource, statusFilter, validationFilter);
 			} else {
 				toast.info('没有视频被更新');
 			}
@@ -228,6 +248,22 @@
 			updatingAll = false;
 			updateAllDialogOpen = false;
 		}
+	}
+
+	function getVideoSource(video: VideoInfo): { type: string; name: string } | null {
+		if (video.collection_id != null) {
+			return sourceMap.get(`collection:${video.collection_id}`) || null;
+		}
+		if (video.favorite_id != null) {
+			return sourceMap.get(`favorite:${video.favorite_id}`) || null;
+		}
+		if (video.submission_id != null) {
+			return sourceMap.get(`submission:${video.submission_id}`) || null;
+		}
+		if (video.watch_later_id != null) {
+			return sourceMap.get(`watch_later:${video.watch_later_id}`) || null;
+		}
+		return null;
 	}
 
 	// 获取筛选条件的显示数组
@@ -257,10 +293,18 @@
 			};
 			parts.push(`状态：${statusLabels[state.statusFilter]}`);
 		}
+		if (state.validationFilter) {
+			const validationLabels = {
+				skipped: '跳过',
+				invalid: '失效',
+				normal: '有效'
+			};
+			parts.push(`有效性：${validationLabels[state.validationFilter]}`);
+		}
 		return parts;
 	}
 
-	$: if ($page.url.search !== lastSearch) {
+	$: if (videoSourcesLoaded && $page.url.search !== lastSearch) {
 		lastSearch = $page.url.search;
 		handleSearchParamsChange($page.url.searchParams);
 	}
@@ -280,8 +324,19 @@
 				}
 			])
 		);
+		sourceMap.clear();
+		for (const source of Object.values(VIDEO_SOURCES)) {
+			const sourceList = videoSources[source.type as keyof VideoSourcesResponse] as VideoSource[];
+			for (const item of sourceList) {
+				sourceMap.set(`${source.type}:${item.id}`, {
+					type: source.type,
+					name: item.name
+				});
+			}
+		}
 	} else {
 		filters = null;
+		sourceMap.clear();
 	}
 
 	onMount(async () => {
@@ -291,6 +346,7 @@
 			}
 		]);
 		videoSources = (await api.getVideoSources()).data;
+		videoSourcesLoaded = true;
 	});
 
 	$: totalPages = videosData ? Math.ceil(videosData.total_count / pageSize) : 0;
@@ -313,6 +369,22 @@
 		}}
 	></SearchBar>
 	<div class="flex items-center gap-3">
+		<div class="flex items-center gap-1">
+			<span class="text-muted-foreground text-xs">有效性:</span>
+			<ValidationFilter
+				value={$appStateStore.validationFilter}
+				onSelect={(value) => {
+					setValidationFilter(value);
+					resetCurrentPage();
+					goto(`/${ToQuery($appStateStore)}`);
+				}}
+				onRemove={() => {
+					setValidationFilter(null);
+					resetCurrentPage();
+					goto(`/${ToQuery($appStateStore)}`);
+				}}
+			/>
+		</div>
 		<!-- 状态筛选 -->
 		<div class="flex items-center gap-1">
 			<span class="text-muted-foreground text-xs">状态:</span>
@@ -337,11 +409,11 @@
 				{filters}
 				selectedLabel={$appStateStore.videoSource}
 				onSelect={(type, id) => {
-					setAll('', 0, { type, id }, $appStateStore.statusFilter);
+					setAll('', 0, { type, id }, $appStateStore.statusFilter, $appStateStore.validationFilter);
 					goto(`/${ToQuery($appStateStore)}`);
 				}}
 				onRemove={() => {
-					setAll('', 0, null, $appStateStore.statusFilter);
+					setAll('', 0, null, $appStateStore.statusFilter, $appStateStore.validationFilter);
 					goto(`/${ToQuery($appStateStore)}`);
 				}}
 			/>
@@ -395,6 +467,7 @@
 		{#each videosData.videos as video (video.id)}
 			<VideoCard
 				{video}
+				source={getVideoSource(video)}
 				onReset={async (forceReset: boolean) => {
 					await handleResetVideo(video.id, forceReset);
 				}}

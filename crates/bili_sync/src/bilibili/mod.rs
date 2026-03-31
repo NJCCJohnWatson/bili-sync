@@ -4,6 +4,7 @@ use std::sync::Arc;
 pub use analyzer::{BestStream, FilterOption};
 use anyhow::{Context, Result, bail, ensure};
 use arc_swap::ArcSwapOption;
+use bili_sync_entity::upper_vec::Upper;
 use chrono::serde::ts_seconds;
 use chrono::{DateTime, Utc};
 pub use client::{BiliClient, Client};
@@ -13,7 +14,6 @@ pub use danmaku::DanmakuOption;
 pub use dynamic::Dynamic;
 pub use error::BiliError;
 pub use favorite_list::FavoriteList;
-use favorite_list::Upper;
 pub use me::Me;
 use once_cell::sync::Lazy;
 use reqwest::{RequestBuilder, StatusCode};
@@ -133,7 +133,9 @@ pub enum VideoInfo {
         #[serde(rename = "pic")]
         cover: String,
         #[serde(rename = "owner")]
-        upper: Upper<i64>,
+        upper: Upper<i64, String>,
+        #[serde(default)]
+        staff: Option<Vec<Upper<i64, String>>>,
         #[serde(with = "ts_seconds")]
         ctime: DateTime<Utc>,
         #[serde(rename = "pubdate", with = "ts_seconds")]
@@ -152,7 +154,7 @@ pub enum VideoInfo {
         bvid: String,
         intro: String,
         cover: String,
-        upper: Upper<i64>,
+        upper: Upper<i64, String>,
         #[serde(with = "ts_seconds")]
         ctime: DateTime<Utc>,
         #[serde(with = "ts_seconds")]
@@ -170,7 +172,7 @@ pub enum VideoInfo {
         #[serde(rename = "pic")]
         cover: String,
         #[serde(rename = "owner")]
-        upper: Upper<i64>,
+        upper: Upper<i64, String>,
         #[serde(with = "ts_seconds")]
         ctime: DateTime<Utc>,
         #[serde(rename = "add_at", with = "ts_seconds")]
@@ -311,7 +313,7 @@ mod tests {
             .into_mixin_key()
             .context("no mixin key")?;
         set_global_mixin_key(mixin_key);
-        let video = Video::new(&bili_client, "BV1gLfnY8E6D".to_string(), &credential);
+        let video = Video::new(&bili_client, "BV1gLfnY8E6D", &credential);
         let pages = video.get_pages().await?;
         println!("pages: {:?}", pages);
         let subtitles = video.get_subtitles(&pages[0]).await?;
@@ -342,7 +344,7 @@ mod tests {
             ("BV16w41187fx", (true, true)),   // 充电专享但有权观看
             ("BV1n34jzPEYq", (false, false)), // 普通视频
         ] {
-            let video = Video::new(&bili_client, bvid.to_string(), credential);
+            let video = Video::new(&bili_client, bvid, credential);
             let info = video.get_view_info().await?;
             let VideoInfo::Detail {
                 is_upower_exclusive,
@@ -375,7 +377,7 @@ mod tests {
             ("BV13xtnzPEye", false), // 番剧
             ("BV1kT4NzTEZj", true),  // 普通视频
         ] {
-            let video = Video::new(&bili_client, bvid.to_string(), credential);
+            let video = Video::new(&bili_client, bvid, credential);
             let info = video.get_view_info().await?;
             let VideoInfo::Detail { redirect_url, .. } = info else {
                 unreachable!();
