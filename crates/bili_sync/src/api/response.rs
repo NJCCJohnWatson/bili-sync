@@ -3,7 +3,6 @@ use bili_sync_entity::*;
 use sea_orm::prelude::DateTime;
 use sea_orm::{DerivePartialModel, FromQueryResult};
 use serde::Serialize;
-pub use chrono::NaiveDateTime as DateTime;
 
 use crate::bilibili::{PollStatus, Qrcode};
 use crate::utils::status::{PageStatus, VideoStatus};
